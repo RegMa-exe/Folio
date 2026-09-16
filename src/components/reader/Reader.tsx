@@ -50,8 +50,10 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
   useEffect(() => {
     const element = stageRef.current;
     if (!element) return;
-    const observer = new ResizeObserver(([entry]) => {
-      const { width, height } = entry.contentRect;
+    const observer = new ResizeObserver((entries) => {
+      const rect = entries[0]?.contentRect;
+      if (!rect) return;
+      const { width, height } = rect;
       setBox({ width: Math.max(240, width), height: Math.max(320, height) });
     });
     observer.observe(element);
@@ -107,13 +109,14 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
   const touchStart = useRef<{ x: number; y: number } | null>(null);
   const onTouchStart = (event: React.TouchEvent) => {
     const t = event.touches[0];
+    if (!t) return;
     touchStart.current = { x: t.clientX, y: t.clientY };
   };
   const onTouchEnd = (event: React.TouchEvent) => {
     const start = touchStart.current;
     touchStart.current = null;
-    if (!start) return;
     const t = event.changedTouches[0];
+    if (!start || !t) return;
     const dx = t.clientX - start.x;
     const dy = t.clientY - start.y;
     if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.4) {

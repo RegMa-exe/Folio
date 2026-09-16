@@ -163,21 +163,10 @@
   animation: rise 0.9s cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 
-@keyframes turn-forward {
+@keyframes turn-next {
   0% {
-    transform: rotateY(0deg);
-    opacity: 1;
-  }
-  100% {
-    transform: rotateY(-16deg) translateX(-2%);
-    opacity: 0;
-  }
-}
-
-@keyframes turn-back {
-  0% {
-    transform: rotateY(16deg) translateX(2%);
-    opacity: 0;
+    transform: rotateY(14deg) translateX(1.5%);
+    opacity: 0.2;
   }
   100% {
     transform: rotateY(0deg);
@@ -185,20 +174,23 @@
   }
 }
 
-.turning-forward {
-  transform-origin: left center;
-  animation: turn-forward 0.26s cubic-bezier(0.4, 0, 0.7, 0.2) forwards;
+@keyframes turn-prev {
+  0% {
+    transform: rotateY(-14deg) translateX(-1.5%);
+    opacity: 0.2;
+  }
+  100% {
+    transform: rotateY(0deg);
+    opacity: 1;
+  }
 }
 
-.turning-back {
+.turning-next {
   transform-origin: right center;
-  animation: turn-back 0.3s cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+  animation: turn-next 0.32s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .turning-forward,
-  .turning-back,
-  .animate-rise {
-    animation: none !important;
-  }
+.turning-prev {
+  transform-origin: left center;
+  animation: turn-prev 0.32s cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
