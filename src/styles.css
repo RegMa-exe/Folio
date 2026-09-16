@@ -52,81 +52,83 @@
 :root {
   --radius: 0.75rem;
 
-  --paper: oklch(0.96 0.016 82.8);
-  --paper-deep: oklch(0.928 0.023 82.1);
-  --ink: oklch(0.269 0.013 62.1);
-  --ink-soft: oklch(0.504 0.025 69.4);
-  --ink-faint: oklch(0.693 0.027 73.1);
-  --lamplight: oklch(0.625 0.105 63.7);
-  --lamplight-soft: oklch(0.733 0.087 72.1);
-  --ivory: oklch(0.942 0.026 84.6);
-  --beige: oklch(0.899 0.033 81);
-  --night: oklch(0.23 0.012 67.2);
-  --night-ink: oklch(0.904 0.025 81.1);
+  /* Warm literary palette */
+  --paper: #FFFDF7;          /* book/page color */
+  --paper-deep: #F5F1E8;     /* primary background — warm ivory */
+  --ink: #171512;            /* primary text */
+  --ink-soft: #6F6A61;        /* secondary text */
+  --ink-faint: #A8A299;       /* tertiary / hints */
+  --lamplight: #3A2C24;      /* accent — espresso brown */
+  --lamplight-soft: #6B5648;  /* lighter accent */
+  --ivory: #F5F1E8;
+  --beige: #E9E2D3;
+  --night: #1C1814;
+  --night-ink: #E8E2D5;
+  --hairline: #DDD7CC;       /* borders */
 
-  --background: var(--paper);
+  --background: var(--paper-deep);
   --foreground: var(--ink);
-  --card: oklch(0.977 0.011 84.6);
+  --card: var(--paper);
   --card-foreground: var(--ink);
-  --popover: oklch(0.977 0.011 84.6);
+  --popover: var(--paper);
   --popover-foreground: var(--ink);
   --primary: var(--ink);
   --primary-foreground: var(--paper);
-  --secondary: var(--paper-deep);
+  --secondary: var(--beige);
   --secondary-foreground: var(--ink);
-  --muted: var(--paper-deep);
+  --muted: var(--beige);
   --muted-foreground: var(--ink-soft);
   --accent: var(--lamplight);
   --accent-foreground: var(--paper);
   --destructive: oklch(0.55 0.17 27);
   --destructive-foreground: oklch(0.98 0.01 85);
-  --border: oklch(0.269 0.013 62.1 / 12%);
-  --input: oklch(0.269 0.013 62.1 / 18%);
+  --border: var(--hairline);
+  --input: var(--hairline);
   --ring: var(--lamplight);
 }
 
 /* Reading themes — applied on the reader root via [data-reading-theme] */
 [data-reading-theme="classic"] {
-  --room: oklch(0.928 0.023 82.1);
-  --page: oklch(0.977 0.011 84.6);
-  --room-ink: var(--ink);
-  --room-ink-soft: var(--ink-soft);
+  --room: #F0EBE0;
+  --page: #FFFDF7;
+  --room-ink: #171512;
+  --room-ink-soft: #6F6A61;
   --page-filter: none;
 }
 [data-reading-theme="ivory"] {
-  --room: oklch(0.906 0.028 84);
-  --page: oklch(0.955 0.026 84.6);
-  --room-ink: var(--ink);
-  --room-ink-soft: var(--ink-soft);
-  --page-filter: sepia(0.08);
+  --room: #EDE6D6;
+  --page: #FBF6EB;
+  --room-ink: #171512;
+  --room-ink-soft: #6F6A61;
+  --page-filter: sepia(0.06);
 }
 [data-reading-theme="beige"] {
-  --room: oklch(0.858 0.035 80);
-  --page: oklch(0.912 0.033 81);
-  --room-ink: var(--ink);
-  --room-ink-soft: var(--ink-soft);
-  --page-filter: sepia(0.16) saturate(0.95);
+  --room: #E2D9C6;
+  --page: #F5EFE0;
+  --room-ink: #2A241E;
+  --room-ink-soft: #7A7165;
+  --page-filter: sepia(0.12) saturate(0.95);
 }
 [data-reading-theme="dark"] {
-  --room: oklch(0.19 0.01 67);
-  --page: oklch(0.255 0.012 67);
-  --room-ink: var(--night-ink);
-  --room-ink-soft: oklch(0.72 0.02 78);
+  --room: #1C1814;
+  --page: #2A241E;
+  --room-ink: #E8E2D5;
+  --room-ink-soft: #A89E8E;
   --page-filter: invert(0.9) hue-rotate(180deg) contrast(0.92) brightness(1.04);
 }
 
 @utility page-sheet {
   background: var(--page);
   box-shadow:
-    0 1px 0 oklch(1 0 0 / 40%) inset,
-    0 30px 60px -30px oklch(0.269 0.013 62.1 / 50%),
-    0 12px 24px -18px oklch(0.269 0.013 62.1 / 40%);
+    0 1px 0 oklch(1 0 0 / 30%) inset,
+    0 24px 50px -28px oklch(0.23 0.01 60 / 35%),
+    0 8px 20px -14px oklch(0.23 0.01 60 / 25%);
 }
 
 @utility lamp-glow {
   background: radial-gradient(
     60% 50% at 50% 35%,
-    color-mix(in oklab, var(--lamplight) 14%, transparent),
+    color-mix(in oklab, var(--lamplight) 10%, transparent),
     transparent 70%
   );
 }
@@ -198,7 +200,50 @@
 @media (prefers-reduced-motion: reduce) {
   .turning-next,
   .turning-prev,
-  .animate-rise {
+  .animate-rise,
+  .corridor-track {
     animation: none !important;
+  }
+}
+
+/* ── Image corridor animation ── */
+@keyframes corridor-flow {
+  from {
+    transform: translateZ(0);
+  }
+  to {
+    transform: translateZ(0);
+  }
+}
+
+.corridor-track {
+  animation: corridor-flow 40s linear infinite;
+}
+
+@keyframes corridor-drift {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.7;
+  }
+  90% {
+    opacity: 0.7;
+  }
+  100% {
+    transform: translateY(-12px) scale(1.02);
+    opacity: 0;
+  }
+}
+
+.corridor-panel {
+  animation: corridor-drift 18s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .corridor-panel {
+    animation: none !important;
+    opacity: 0.5;
   }
 }

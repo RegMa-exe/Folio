@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { Upload, FileText } from "lucide-react";
 
 type Props = {
   onFile: (file: File) => void;
@@ -19,14 +20,7 @@ export function UploadPanel({ onFile, status, progress, fileName, error }: Props
   };
 
   return (
-    <div className="rounded-2xl bg-card p-6 ring-1 ring-ink/10 sm:p-8">
-      <div className="flex items-center justify-between">
-        <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-ink-soft">Upload a book</p>
-        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint">
-          PDF · stays on your device
-        </span>
-      </div>
-
+    <div className="w-full max-w-xl">
       <div
         onDragOver={(event) => {
           event.preventDefault();
@@ -38,56 +32,82 @@ export function UploadPanel({ onFile, status, progress, fileName, error }: Props
           setDragging(false);
           handleFiles(event.dataTransfer.files);
         }}
-        className={`mt-5 rounded-xl border border-dashed p-8 text-center transition-colors sm:p-10 ${
-          dragging ? "border-lamplight bg-lamplight/10" : "border-ink/25 hover:border-lamplight/60 hover:bg-lamplight/5"
+        className={`relative rounded-sm border border-dashed p-10 text-center transition-all sm:p-14 ${
+          dragging
+            ? "border-lamplight bg-lamplight/5"
+            : "border-hairline hover:border-lamplight/50 hover:bg-paper/50"
         }`}
+        style={{
+          background: dragging ? undefined : "var(--paper)",
+        }}
       >
-        <p className="font-display text-2xl italic text-ink">Drag &amp; drop your PDF here</p>
-        <p className="mt-2 text-sm text-ink-soft">or</p>
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={busy}
-          className="mt-4 inline-flex items-center gap-2 rounded-full bg-ink px-6 py-3 text-sm font-medium text-paper transition-colors hover:bg-lamplight disabled:opacity-60"
-        >
-          {busy ? "Preparing…" : "Upload a Book"}
-          <span aria-hidden className="text-xs">
-            ↗
-          </span>
-        </button>
-        <input
-          ref={inputRef}
-          type="file"
-          accept="application/pdf,.pdf"
-          className="sr-only"
-          onChange={(event) => handleFiles(event.target.files)}
+        {/* Desk-like surface detail */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 rounded-sm"
+          style={{
+            boxShadow: "inset 0 1px 0 oklch(1 0 0 / 40%)",
+          }}
         />
+
+        <div className="relative">
+          <p className="font-display text-3xl font-semibold italic text-ink sm:text-4xl">
+            Bring your book.
+          </p>
+          <p className="mt-4 text-base text-ink-soft">
+            Drop a PDF here or choose a file from your device.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={busy}
+            className="mt-8 inline-flex items-center gap-2.5 rounded-full bg-ink px-7 py-3.5 font-mono text-[11px] uppercase tracking-[0.25em] text-paper transition-all hover:bg-lamplight disabled:opacity-50"
+          >
+            <Upload className="size-3.5" />
+            {busy ? "Preparing…" : "Choose PDF"}
+          </button>
+
+          <input
+            ref={inputRef}
+            type="file"
+            accept="application/pdf,.pdf"
+            className="sr-only"
+            onChange={(event) => handleFiles(event.target.files)}
+          />
+
+          <p className="mt-6 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint">
+            PDF · Stays on your device
+          </p>
+        </div>
       </div>
 
-      {fileName && status !== "error" ? (
-        <div className="mt-6 border-t border-ink/10 pt-6">
-          <div className="flex items-center justify-between gap-4 text-sm">
-            <div className="flex min-w-0 items-center gap-3">
-              <span className="size-2 shrink-0 rounded-full bg-lamplight" />
-              <span className="truncate font-medium">{fileName}</span>
-            </div>
-            <span className="shrink-0 font-mono text-[11px] text-ink-soft">
-              {status === "reading" ? `Reading · ${Math.round(progress * 100)}%` : "Opening the book…"}
-            </span>
+      {/* Processing / loading state */}
+      {fileName && status !== "error" && status !== "idle" && (
+        <div className="mt-6 border-t border-hairline pt-6">
+          <div className="flex items-center gap-3">
+            <FileText className="size-4 shrink-0 text-lamplight" />
+            <span className="truncate font-display text-lg italic text-ink">{fileName}</span>
           </div>
-          <div className="mt-3 h-1 overflow-hidden rounded-full bg-ink/10">
+          <div className="mt-4 h-px overflow-hidden bg-hairline">
             <div
-              className="h-full rounded-full bg-lamplight transition-[width] duration-200"
+              className="h-full bg-lamplight transition-[width] duration-200"
               style={{ width: `${Math.max(6, progress * 100)}%` }}
             />
           </div>
+          <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.2em] text-ink-faint">
+            {status === "reading" ? `Reading · ${Math.round(progress * 100)}%` : "Opening the book…"}
+          </p>
         </div>
-      ) : null}
+      )}
 
+      {/* Error state */}
       {error ? (
-        <p role="alert" className="mt-6 border-t border-ink/10 pt-6 text-sm text-destructive">
-          {error}
-        </p>
+        <div className="mt-6 border-t border-hairline pt-6">
+          <p role="alert" className="text-sm text-destructive">
+            {error}
+          </p>
+        </div>
       ) : null}
     </div>
   );

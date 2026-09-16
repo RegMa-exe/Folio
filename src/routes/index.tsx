@@ -1,21 +1,29 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { PDFDocumentProxy } from "pdfjs-dist";
 import { UploadPanel } from "@/components/UploadPanel";
 import { Reader } from "@/components/reader/Reader";
+import { Navbar } from "@/components/landing/Navbar";
+import { Hero } from "@/components/landing/Hero";
+import { HowItWorks } from "@/components/landing/HowItWorks";
+import { Features } from "@/components/landing/Features";
+import { ReaderPreview } from "@/components/landing/ReaderPreview";
+import { FinalCTA } from "@/components/landing/FinalCTA";
+import { Footer } from "@/components/landing/Footer";
 import { loadPdf } from "@/lib/pdf";
 import { bookKey } from "@/lib/reading-storage";
+import { FileText, BookOpen } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "BookFlow — Read your digital books like books" },
+      { title: "folio — Read your digital books like books" },
       {
         name: "description",
         content:
           "Turn a PDF into an immersive, book-like reading experience: one page at a time, real page turns, warm paper themes. Nothing leaves your device.",
       },
-      { property: "og:title", content: "BookFlow — Read your digital books like books" },
+      { property: "og:title", content: "folio — Read your digital books like books" },
       {
         property: "og:description",
         content: "Turn your PDF into an immersive, book-like reading experience.",
@@ -27,16 +35,26 @@ export const Route = createFileRoute("/")({
 
 type Status = "idle" | "reading" | "processing" | "error";
 
+type LoadedBook = {
+  doc: PDFDocumentProxy;
+  title: string;
+  key: string;
+};
+
 function Home() {
   const [status, setStatus] = useState<Status>("idle");
   const [progress, setProgress] = useState(0);
   const [fileName, setFileName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [book, setBook] = useState<{ doc: PDFDocumentProxy; title: string; key: string } | null>(null);
+  const [loadedBook, setLoadedBook] = useState<LoadedBook | null>(null);
+  const [isReading, setIsReading] = useState(false);
+  const [showUpload, setShowUpload] = useState(false);
+  const uploadRef = useRef<HTMLDivElement>(null);
 
   const openFile = useCallback(async (file: File) => {
     setError(null);
     setFileName(file.name);
+    setLoadedBook(null);
 
     if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
       setStatus("error");
@@ -52,7 +70,7 @@ function Home() {
       setStatus("processing");
       const doc = await loadPdf(data, (ratio) => setProgress(0.4 + ratio * 0.6));
       const title = file.name.replace(/\.pdf$/i, "");
-      setBook({ doc, title, key: bookKey(file.name, file.size, doc.numPages) });
+      setLoadedBook({ doc, title, key: bookKey(file.name, file.size, doc.numPages) });
       setStatus("idle");
       setProgress(1);
     } catch {
@@ -61,66 +79,88 @@ function Home() {
     }
   }, []);
 
-  if (book) {
+  const scrollToUpload = useCallback(() => {
+    setShowUpload(true);
+    requestAnimationFrame(() => {
+      uploadRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+  }, []);
+
+  // ── Reader mode ──
+  if (loadedBook && isReading) {
     return (
       <Reader
-        doc={book.doc}
-        title={book.title}
-        storageKey={book.key}
+        doc={loadedBook.doc}
+        title={loadedBook.title}
+        storageKey={loadedBook.key}
         onExit={() => {
-          setBook(null);
-          setStatus("idle");
-          setProgress(0);
-          setFileName(null);
+          setIsReading(false);
         }}
       />
     );
   }
 
+  const showPreview = loadedBook && status === "idle" && progress === 1;
+
   return (
-    <main className="relative min-h-screen overflow-hidden bg-paper text-ink">
+    <main className="relative min-h-screen overflow-hidden bg-paper-deep text-ink">
+      {/* Subtle warm ambient glow */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
-        <div className="absolute -top-40 left-1/2 h-[520px] w-[820px] -translate-x-1/2 rounded-full bg-lamplight/10 blur-3xl" />
-        <div className="absolute bottom-0 -right-24 h-80 w-80 rounded-full bg-lamplight-soft/10 blur-3xl" />
+        <div
+          className="absolute -top-40 left-1/2 h-[420px] w-[760px] -translate-x-1/2 rounded-full"
+          style={{
+            background:
+              "radial-gradient(60% 50%, color-mix(in oklab, var(--lamplight) 6%, transparent), transparent 70%)",
+          }}
+        />
       </div>
 
-      <header className="relative z-10 mx-auto flex max-w-5xl items-baseline gap-2 px-6 py-6 sm:px-8">
-        <span className="font-display text-2xl font-semibold tracking-tight">BookFlow</span>
-        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-ink-faint">Reader</span>
-      </header>
+      <Navbar onUploadClick={scrollToUpload} />
 
-      <div className="relative z-10 mx-auto max-w-5xl px-6 pb-24 pt-10 sm:px-8 sm:pt-14">
-        <p className="animate-rise font-mono text-[11px] uppercase tracking-[0.3em] text-lamplight">
-          A quiet place to read
-        </p>
-        <h1 className="animate-rise mt-6 text-balance font-display text-[clamp(3rem,8vw,6.5rem)] font-semibold leading-[0.95] tracking-tight [animation-delay:80ms]">
-          Read your digital books
-          <br className="hidden sm:block" />
-          <span className="italic text-ink-soft"> like books.</span>
-        </h1>
-        <p className="animate-rise mt-8 max-w-[44ch] text-pretty text-lg leading-relaxed text-ink-soft [animation-delay:160ms]">
-          Turn your PDF into an immersive, book-like reading experience. One page at a time, under a
-          single warm lamp.
-        </p>
+      <Hero onUploadClick={scrollToUpload} />
 
-        <div className="animate-rise mt-14 max-w-xl [animation-delay:240ms]">
-          <UploadPanel
-            onFile={openFile}
-            status={status}
-            progress={progress}
-            fileName={fileName}
-            error={error}
-          />
+      {/* Upload area — revealed when user clicks "Upload a Book" */}
+      {showUpload && (
+        <div ref={uploadRef} className="relative z-10 mx-auto -mt-4 max-w-5xl px-6 pb-12 sm:px-8">
+          {showPreview && loadedBook ? (
+            <div
+              className="mx-auto max-w-xl rounded-sm border border-hairline p-8 text-center sm:p-12"
+              style={{ background: "var(--paper)" }}
+            >
+              <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-paper-deep">
+                <FileText className="size-7 text-lamplight" />
+              </div>
+              <h3 className="mt-6 font-display text-2xl font-semibold italic text-ink">
+                {loadedBook.title}
+              </h3>
+              <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.2em] text-ink-soft">
+                {loadedBook.doc.numPages} pages
+              </p>
+              <button
+                onClick={() => setIsReading(true)}
+                className="mt-8 inline-flex items-center gap-2.5 rounded-full bg-ink px-7 py-3.5 font-mono text-[11px] uppercase tracking-[0.25em] text-paper transition-all hover:bg-lamplight hover:shadow-lg"
+              >
+                <BookOpen className="size-3.5" />
+                Start Reading
+              </button>
+            </div>
+          ) : (
+            <UploadPanel
+              onFile={openFile}
+              status={status}
+              progress={progress}
+              fileName={fileName}
+              error={error}
+            />
+          )}
         </div>
+      )}
 
-        <div className="mt-16 flex flex-wrap items-center gap-x-8 gap-y-3 border-t border-ink/10 pt-6 font-mono text-[11px] uppercase tracking-[0.2em] text-ink-faint">
-          <span>Click the edges or swipe to turn</span>
-          <span className="size-1 rounded-full bg-lamplight" />
-          <span>Four paper themes</span>
-          <span className="size-1 rounded-full bg-lamplight" />
-          <span>No account, no cloud</span>
-        </div>
-      </div>
+      <HowItWorks />
+      <Features />
+      <ReaderPreview />
+      <FinalCTA onUploadClick={scrollToUpload} />
+      <Footer />
     </main>
   );
 }

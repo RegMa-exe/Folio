@@ -3,7 +3,7 @@ import type { ReadingTheme } from "@/lib/reading-storage";
 const THEMES: { id: ReadingTheme; label: string; swatch: string }[] = [
   { id: "classic", label: "Classic Paper", swatch: "#FBF7EF" },
   { id: "ivory", label: "Warm Ivory", swatch: "#F4EBD9" },
-  { id: "beige", label: "Soft Beige", swatch: "#E9DCC6" },
+  { id: "beige", label: "Warm Paper", swatch: "#E9DCC6" },
   { id: "dark", label: "Dark Reading", swatch: "#211C17" },
 ];
 
