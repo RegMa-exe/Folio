@@ -33,6 +33,10 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
   const [box, setBox] = useState({ width: 720, height: 900 });
   const [aspect, setAspect] = useState(0.72);
 
+  // cursor zone state: "left" | "right" | null, plus edge intensity 0..1
+  const [cursorZone, setCursorZone] = useState<"left" | "right" | null>(null);
+  const [edgeIntensity, setEdgeIntensity] = useState(0);
+
   const stageRef = useRef<HTMLDivElement>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const turnId = useRef(0);
@@ -46,18 +50,17 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
     saveBookState(storageKey, { page, bookmarks });
   }, [storageKey, page, bookmarks]);
 
-  // measure the reading area
+  // measure the reading area — use the full viewport
   useEffect(() => {
-    const element = stageRef.current;
-    if (!element) return;
-    const observer = new ResizeObserver((entries) => {
-      const rect = entries[0]?.contentRect;
-      if (!rect) return;
-      const { width, height } = rect;
-      setBox({ width: Math.max(240, width), height: Math.max(320, height) });
-    });
-    observer.observe(element);
-    return () => observer.disconnect();
+    const update = () => {
+      setBox({
+        width: Math.max(240, window.innerWidth),
+        height: Math.max(320, window.innerHeight),
+      });
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
   }, []);
 
   const revealControls = useCallback(() => {
@@ -132,14 +135,65 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
     revealControls();
   };
 
-  const sheetWidth = Math.min(box.width, box.height * aspect);
+  // ── Sizing: target ~90vh, preserve aspect ratio, cap max width ──
+  // Reserve ~10vh for top/bottom UI
+  const targetHeight = box.height * 0.9;
+  const maxSheetWidth = Math.min(box.width * 0.94, targetHeight * aspect, 1100);
+  const sheetWidth = Math.max(200, maxSheetWidth);
+
+  // ── Cursor zone tracking ──
+  const onStageMouseMove = useCallback(
+    (event: React.MouseEvent) => {
+      revealControls();
+      const rect = stageRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const x = event.clientX - rect.left;
+      const half = rect.width / 2;
+      if (x < half) {
+        setCursorZone("left");
+        // intensity: 0 at center, 1 at left edge
+        setEdgeIntensity(1 - x / half);
+      } else {
+        setCursorZone("right");
+        // intensity: 0 at center, 1 at right edge
+        setEdgeIntensity((x - half) / half);
+      }
+    },
+    [revealControls],
+  );
+
+  const onStageMouseLeave = useCallback(() => {
+    setCursorZone(null);
+    setEdgeIntensity(0);
+  }, []);
+
+  // ── Click handler for the full viewport ──
+  const onStageClick = useCallback(
+    (event: React.MouseEvent) => {
+      // If the click target is inside a UI control, skip navigation
+      const target = event.target as HTMLElement;
+      if (target.closest("[data-reader-control]")) return;
+
+      const rect = stageRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const x = event.clientX - rect.left;
+      if (x < rect.width / 2) {
+        go("prev");
+      } else {
+        go("next");
+      }
+      revealControls();
+    },
+    [go, revealControls],
+  );
+
+  const arrowOpacity = Math.min(0.7, 0.15 + edgeIntensity * 0.55);
 
   return (
     <div
       data-reading-theme={theme}
       className="fixed inset-0 z-40 overflow-hidden"
       style={{ background: "var(--room)", color: "var(--room-ink)" }}
-      onMouseMove={revealControls}
     >
       <div className="lamp-glow pointer-events-none absolute inset-0" />
 
@@ -178,10 +232,16 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
 
       <div
         ref={stageRef}
-        className="relative h-full w-full px-4 py-16 sm:px-14 sm:py-20"
+        className="relative h-full w-full"
+        onMouseMove={onStageMouseMove}
+        onMouseLeave={onStageMouseLeave}
+        onClick={onStageClick}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
-        style={{ perspective: "2200px" }}
+        style={{
+          perspective: "2200px",
+          cursor: cursorZone === "left" ? "w-resize" : cursorZone === "right" ? "e-resize" : "default",
+        }}
       >
         <div className="flex h-full w-full items-center justify-center">
           <div className="relative" style={{ width: sheetWidth }}>
@@ -207,7 +267,7 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
                 doc={doc}
                 pageNumber={page}
                 maxWidth={sheetWidth}
-                maxHeight={box.height}
+                maxHeight={targetHeight}
                 onAspect={setAspect}
               />
               {bookmarks.includes(page) ? (
@@ -221,31 +281,34 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
                 />
               ) : null}
             </div>
-
-            {/* edge tap zones */}
-            <button
-              className="absolute inset-y-0 left-0 w-1/3 cursor-w-resize"
-              aria-label="Previous page"
-              onClick={() => {
-                go("prev");
-                revealControls();
-              }}
-            />
-            <button
-              className="absolute inset-y-0 left-1/3 w-1/3"
-              aria-label="Show reading controls"
-              onClick={revealControls}
-            />
-            <button
-              className="absolute inset-y-0 right-0 w-1/3 cursor-e-resize"
-              aria-label="Next page"
-              onClick={() => {
-                go("next");
-                revealControls();
-              }}
-            />
           </div>
         </div>
+
+        {/* Cursor affordance arrows */}
+        {cursorZone === "left" && (
+          <div
+            className="pointer-events-none fixed left-8 top-1/2 -translate-y-1/2 font-display text-5xl"
+            style={{
+              opacity: arrowOpacity,
+              color: "var(--room-ink)",
+              transition: "opacity 120ms ease",
+            }}
+          >
+            ←
+          </div>
+        )}
+        {cursorZone === "right" && (
+          <div
+            className="pointer-events-none fixed right-8 top-1/2 -translate-y-1/2 font-display text-5xl"
+            style={{
+              opacity: arrowOpacity,
+              color: "var(--room-ink)",
+              transition: "opacity 120ms ease",
+            }}
+          >
+            →
+          </div>
+        )}
       </div>
     </div>
   );

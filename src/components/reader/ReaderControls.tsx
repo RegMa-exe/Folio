@@ -53,12 +53,14 @@ export function ReaderControls({
         />
       </div>
 
-      <header
-        className={`fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-4 px-4 py-4 sm:px-8 ${shell}`}
+      {/* Header — container is pass-through; only the interactive children capture clicks */}
+      <div
+        className={`fixed inset-x-0 top-0 z-30 flex items-center justify-between gap-4 px-4 py-4 sm:px-8 ${shell} pointer-events-none`}
       >
         <button
+          data-reader-control
           onClick={onExit}
-          className="font-mono text-[10px] uppercase tracking-[0.25em] opacity-70 transition-opacity hover:opacity-100"
+          className="pointer-events-auto font-mono text-[10px] uppercase tracking-[0.25em] opacity-70 transition-opacity hover:opacity-100"
         >
           ← Close book
         </button>
@@ -66,11 +68,12 @@ export function ReaderControls({
           {title}
         </p>
         <button
+          data-reader-control
           onClick={onToggleBookmark}
           aria-pressed={bookmarked}
           aria-label={bookmarked ? "Remove bookmark" : "Bookmark this page"}
           title={bookmarked ? "Remove bookmark" : "Bookmark this page"}
-          className="grid size-9 place-items-center rounded-full transition-colors hover:bg-current/10"
+          className="pointer-events-auto grid size-9 place-items-center rounded-full transition-colors hover:bg-current/10"
         >
           <span
             className="block h-5 w-3.5"
@@ -82,19 +85,32 @@ export function ReaderControls({
             }}
           />
         </button>
-      </header>
+      </div>
 
-      <footer
-        className={`fixed inset-x-0 bottom-0 z-30 flex flex-col items-center gap-4 px-4 pb-6 pt-10 sm:px-8 ${shell}`}
+      {/* Footer — container is pass-through; only the interactive children capture clicks */}
+      <div
+        className={`fixed inset-x-0 bottom-0 z-30 flex flex-col items-center gap-4 px-4 pb-6 pt-10 sm:px-8 ${shell} pointer-events-none`}
       >
         <div className="flex items-center gap-4">
-          <button onClick={onPrev} className={button} aria-label="Previous page" disabled={page <= 1}>
+          <button
+            data-reader-control
+            onClick={onPrev}
+            className={`pointer-events-auto ${button}`}
+            aria-label="Previous page"
+            disabled={page <= 1}
+          >
             ‹
           </button>
           <span className="font-mono text-[11px] tracking-[0.2em] tabular-nums opacity-70">
             Page {page} / {total}
           </span>
-          <button onClick={onNext} className={button} aria-label="Next page" disabled={page >= total}>
+          <button
+            data-reader-control
+            onClick={onNext}
+            className={`pointer-events-auto ${button}`}
+            aria-label="Next page"
+            disabled={page >= total}
+          >
             ›
           </button>
         </div>
@@ -104,11 +120,12 @@ export function ReaderControls({
             {THEMES.map((option) => (
               <button
                 key={option.id}
+                data-reader-control
                 onClick={() => onTheme(option.id)}
                 title={option.label}
                 aria-label={option.label}
                 aria-pressed={theme === option.id}
-                className="size-6 rounded-full border border-current/25 transition-transform hover:scale-105"
+                className="pointer-events-auto size-6 rounded-full border border-current/25 transition-transform hover:scale-105"
                 style={{
                   background: option.swatch,
                   outline: theme === option.id ? "2px solid var(--lamplight)" : "none",
@@ -118,14 +135,15 @@ export function ReaderControls({
             ))}
           </div>
           <button
+            data-reader-control
             onClick={onToggleSound}
             aria-pressed={soundOn}
-            className="rounded-full border border-current/15 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.2em] opacity-70 transition-opacity hover:opacity-100"
+            className="pointer-events-auto rounded-full border border-current/15 px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.2em] opacity-70 transition-opacity hover:opacity-100"
           >
             Page sound {soundOn ? "on" : "off"}
           </button>
         </div>
-      </footer>
+      </div>
     </>
   );
 }
