@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400;1,600&display=swap");
 @import "tailwindcss" source(none);
 @source "../src";
 @import "tw-animate-css";
@@ -12,8 +13,8 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
 
-  --font-display: "Cormorant Garamond", Georgia, serif;
-  --font-body: "Inter", system-ui, sans-serif;
+  --font-display: "Playfair Display", Georgia, serif;
+  --font-body: "Helvetica", "Arial", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
   --color-background: var(--background);
@@ -53,18 +54,18 @@
   --radius: 0.75rem;
 
   /* Warm literary palette */
-  --paper: #FFFDF7;          /* book/page color */
-  --paper-deep: #F5F1E8;     /* primary background — warm ivory */
-  --ink: #171512;            /* primary text */
-  --ink-soft: #6F6A61;        /* secondary text */
-  --ink-faint: #A8A299;       /* tertiary / hints */
-  --lamplight: #3A2C24;      /* accent — espresso brown */
-  --lamplight-soft: #6B5648;  /* lighter accent */
+  --paper: #FFFDF7;
+  --paper-deep: #F5F1E8;
+  --ink: #171512;
+  --ink-soft: #6F6A61;
+  --ink-faint: #A8A299;
+  --lamplight: #3A2C24;
+  --lamplight-soft: #6B5648;
   --ivory: #F5F1E8;
   --beige: #E9E2D3;
   --night: #1C1814;
   --night-ink: #E8E2D5;
-  --hairline: #DDD7CC;       /* borders */
+  --hairline: #DDD7CC;
 
   --background: var(--paper-deep);
   --foreground: var(--ink);
@@ -87,7 +88,7 @@
   --ring: var(--lamplight);
 }
 
-/* Reading themes — applied on the reader root via [data-reading-theme] */
+/* Reading themes */
 [data-reading-theme="classic"] {
   --room: #F0EBE0;
   --page: #FFFDF7;
@@ -208,12 +209,8 @@
 
 /* ── Image corridor animation ── */
 @keyframes corridor-flow {
-  from {
-    transform: translateZ(0);
-  }
-  to {
-    transform: translateZ(0);
-  }
+  from { transform: translateZ(0); }
+  to { transform: translateZ(0); }
 }
 
 .corridor-track {
@@ -221,20 +218,10 @@
 }
 
 @keyframes corridor-drift {
-  0% {
-    transform: translateY(0) scale(1);
-    opacity: 0;
-  }
-  10% {
-    opacity: 0.7;
-  }
-  90% {
-    opacity: 0.7;
-  }
-  100% {
-    transform: translateY(-12px) scale(1.02);
-    opacity: 0;
-  }
+  0% { transform: translateY(0) scale(1); opacity: 0; }
+  10% { opacity: 0.7; }
+  90% { opacity: 0.7; }
+  100% { transform: translateY(-12px) scale(1.02); opacity: 0; }
 }
 
 .corridor-panel {

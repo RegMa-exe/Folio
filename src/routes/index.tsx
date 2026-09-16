@@ -12,6 +12,7 @@ import { FinalCTA } from "@/components/landing/FinalCTA";
 import { Footer } from "@/components/landing/Footer";
 import { loadPdf } from "@/lib/pdf";
 import { bookKey } from "@/lib/reading-storage";
+import { cleanTitle } from "@/lib/title";
 import { FileText, BookOpen } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -69,7 +70,7 @@ function Home() {
       setProgress(0.4);
       setStatus("processing");
       const doc = await loadPdf(data, (ratio) => setProgress(0.4 + ratio * 0.6));
-      const title = file.name.replace(/\.pdf$/i, "");
+      const title = cleanTitle(file.name);
       setLoadedBook({ doc, title, key: bookKey(file.name, file.size, doc.numPages) });
       setStatus("idle");
       setProgress(1);
@@ -124,16 +125,19 @@ function Home() {
         <div ref={uploadRef} className="relative z-10 mx-auto -mt-4 max-w-5xl px-6 pb-12 sm:px-8">
           {showPreview && loadedBook ? (
             <div
-              className="mx-auto max-w-xl rounded-sm border border-hairline p-8 text-center sm:p-12"
+              className="mx-auto flex max-w-2xl flex-col items-center rounded-sm border border-hairline p-10 text-center sm:p-16"
               style={{ background: "var(--paper)" }}
             >
-              <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-paper-deep">
+              <div className="flex size-16 items-center justify-center rounded-full bg-paper-deep">
                 <FileText className="size-7 text-lamplight" />
               </div>
-              <h3 className="mt-6 font-display text-2xl font-semibold italic text-ink">
+              <h3
+                className="mt-6 text-balance font-display text-2xl font-semibold italic leading-tight text-ink sm:text-3xl"
+                style={{ maxWidth: "600px" }}
+              >
                 {loadedBook.title}
               </h3>
-              <p className="mt-2 font-mono text-[11px] uppercase tracking-[0.2em] text-ink-soft">
+              <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.2em] text-ink-soft">
                 {loadedBook.doc.numPages} pages
               </p>
               <button

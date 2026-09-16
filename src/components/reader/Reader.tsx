@@ -20,6 +20,8 @@ type Props = {
   onExit: () => void;
 };
 
+const DRAG_THRESHOLD = 60;
+
 export function Reader({ doc, title, storageKey, onExit }: Props) {
   const total = doc.numPages;
   const initial = loadBookState(storageKey);
@@ -33,13 +35,17 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
   const [box, setBox] = useState({ width: 720, height: 900 });
   const [aspect, setAspect] = useState(0.72);
 
-  // cursor zone state: "left" | "right" | null, plus edge intensity 0..1
+  // cursor zone state
   const [cursorZone, setCursorZone] = useState<"left" | "right" | null>(null);
   const [edgeIntensity, setEdgeIntensity] = useState(0);
 
   const stageRef = useRef<HTMLDivElement>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const turnId = useRef(0);
+
+  // drag state (mouse + touch unified)
+  const dragStart = useRef<{ x: number; y: number } | null>(null);
+  const isDragging = useRef(false);
 
   useEffect(() => {
     setTheme(loadTheme());
@@ -50,7 +56,7 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
     saveBookState(storageKey, { page, bookmarks });
   }, [storageKey, page, bookmarks]);
 
-  // measure the reading area — use the full viewport
+  // measure the reading area
   useEffect(() => {
     const update = () => {
       setBox({
@@ -76,6 +82,7 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
     };
   }, [revealControls]);
 
+  // ── Unified page change ──
   const go = useCallback(
     (dir: "next" | "prev") => {
       setPage((current) => {
@@ -90,15 +97,19 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
     [soundOn, total],
   );
 
+  const nextPage = useCallback(() => go("next"), [go]);
+  const prevPage = useCallback(() => go("prev"), [go]);
+
+  // ── Keyboard ──
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "ArrowRight" || event.key === "PageDown" || event.key === " ") {
         event.preventDefault();
-        go("next");
+        nextPage();
         revealControls();
       } else if (event.key === "ArrowLeft" || event.key === "PageUp") {
         event.preventDefault();
-        go("prev");
+        prevPage();
         revealControls();
       } else if (event.key === "Escape") {
         onExit();
@@ -106,40 +117,7 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [go, onExit, revealControls]);
-
-  // swipe
-  const touchStart = useRef<{ x: number; y: number } | null>(null);
-  const onTouchStart = (event: React.TouchEvent) => {
-    const t = event.touches[0];
-    if (!t) return;
-    touchStart.current = { x: t.clientX, y: t.clientY };
-  };
-  const onTouchEnd = (event: React.TouchEvent) => {
-    const start = touchStart.current;
-    touchStart.current = null;
-    const t = event.changedTouches[0];
-    if (!start || !t) return;
-    const dx = t.clientX - start.x;
-    const dy = t.clientY - start.y;
-    if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy) * 1.4) {
-      go(dx < 0 ? "next" : "prev");
-      revealControls();
-    }
-  };
-
-  const toggleBookmark = () => {
-    setBookmarks((current) =>
-      current.includes(page) ? current.filter((value) => value !== page) : [...current, page].sort((a, b) => a - b),
-    );
-    revealControls();
-  };
-
-  // ── Sizing: target ~90vh, preserve aspect ratio, cap max width ──
-  // Reserve ~10vh for top/bottom UI
-  const targetHeight = box.height * 0.9;
-  const maxSheetWidth = Math.min(box.width * 0.94, targetHeight * aspect, 1100);
-  const sheetWidth = Math.max(200, maxSheetWidth);
+  }, [nextPage, prevPage, onExit, revealControls]);
 
   // ── Cursor zone tracking ──
   const onStageMouseMove = useCallback(
@@ -151,11 +129,9 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
       const half = rect.width / 2;
       if (x < half) {
         setCursorZone("left");
-        // intensity: 0 at center, 1 at left edge
         setEdgeIntensity(1 - x / half);
       } else {
         setCursorZone("right");
-        // intensity: 0 at center, 1 at right edge
         setEdgeIntensity((x - half) / half);
       }
     },
@@ -167,36 +143,105 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
     setEdgeIntensity(0);
   }, []);
 
-  // ── Click handler for the full viewport ──
-  const onStageClick = useCallback(
-    (event: React.MouseEvent) => {
-      // If the click target is inside a UI control, skip navigation
-      const target = event.target as HTMLElement;
+  // ── Unified pointer start (mouse + touch) ──
+  const onPointerDown = useCallback(
+    (clientX: number, clientY: number, target: HTMLElement) => {
       if (target.closest("[data-reader-control]")) return;
-
-      const rect = stageRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const x = event.clientX - rect.left;
-      if (x < rect.width / 2) {
-        go("prev");
-      } else {
-        go("next");
-      }
-      revealControls();
+      dragStart.current = { x: clientX, y: clientY };
+      isDragging.current = false;
     },
-    [go, revealControls],
+    [],
   );
 
-  const arrowOpacity = Math.min(0.7, 0.15 + edgeIntensity * 0.55);
+  // ── Unified pointer end (mouse + touch) ──
+  const onPointerEnd = useCallback(
+    (clientX: number, clientY: number) => {
+      const start = dragStart.current;
+      dragStart.current = null;
+
+      if (!start) return;
+
+      const dx = clientX - start.x;
+      const dy = clientY - start.y;
+
+      // If it was a drag beyond threshold
+      if (Math.abs(dx) > DRAG_THRESHOLD && Math.abs(dx) > Math.abs(dy) * 1.2) {
+        // Drag left → next, drag right → prev
+        go(dx < 0 ? "next" : "prev");
+        revealControls();
+        return;
+      }
+
+      // If it was a click (not a drag), use zone-based navigation
+      if (!isDragging.current && Math.abs(dx) < 8 && Math.abs(dy) < 8) {
+        const rect = stageRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const x = clientX - rect.left;
+        if (x < rect.width / 2) {
+          prevPage();
+        } else {
+          nextPage();
+        }
+        revealControls();
+      }
+    },
+    [go, nextPage, prevPage, revealControls],
+  );
+
+  // ── Mouse handlers ──
+  const onStageMouseDown = useCallback(
+    (event: React.MouseEvent) => {
+      onPointerDown(event.clientX, event.clientY, event.target as HTMLElement);
+    },
+    [onPointerDown],
+  );
+
+  const onStageMouseUp = useCallback(
+    (event: React.MouseEvent) => {
+      onPointerEnd(event.clientX, event.clientY);
+    },
+    [onPointerEnd],
+  );
+
+  // ── Touch handlers ──
+  const onTouchStart = (event: React.TouchEvent) => {
+    const t = event.touches[0];
+    if (!t) return;
+    onPointerDown(t.clientX, t.clientY, event.target as HTMLElement);
+  };
+
+  const onTouchEnd = (event: React.TouchEvent) => {
+    const t = event.changedTouches[0];
+    if (!t) return;
+    onPointerEnd(t.clientX, t.clientY);
+  };
+
+  const toggleBookmark = () => {
+    setBookmarks((current) =>
+      current.includes(page) ? current.filter((value) => value !== page) : [...current, page].sort((a, b) => a - b),
+    );
+    revealControls();
+  };
+
+  // ── Sizing: target ~86vh for book area, reserve space for HUD ──
+  // Top bar ~56px, bottom controls ~100px, so reserve ~160px total
+  const hudReserve = 160;
+  const availableHeight = box.height - hudReserve;
+  const targetHeight = availableHeight * 0.96;
+  const maxSheetWidth = Math.min(box.width * 0.92, targetHeight * aspect, 1100);
+  const sheetWidth = Math.max(200, maxSheetWidth);
+
+  const arrowOpacity = Math.min(0.6, 0.12 + edgeIntensity * 0.48);
 
   return (
     <div
       data-reading-theme={theme}
-      className="fixed inset-0 z-40 overflow-hidden"
+      className="fixed inset-0 z-40 flex flex-col overflow-hidden"
       style={{ background: "var(--room)", color: "var(--room-ink)" }}
     >
       <div className="lamp-glow pointer-events-none absolute inset-0" />
 
+      {/* ── Top bar (dedicated space) ── */}
       <ReaderControls
         visible={controlsVisible}
         title={title}
@@ -205,14 +250,8 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
         bookmarked={bookmarks.includes(page)}
         soundOn={soundOn}
         theme={theme}
-        onPrev={() => {
-          go("prev");
-          revealControls();
-        }}
-        onNext={() => {
-          go("next");
-          revealControls();
-        }}
+        onPrev={() => { prevPage(); revealControls(); }}
+        onNext={() => { nextPage(); revealControls(); }}
         onToggleBookmark={toggleBookmark}
         onToggleSound={() => {
           setSoundOn((on) => {
@@ -230,12 +269,14 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
         onExit={onExit}
       />
 
+      {/* ── Book page area (flex-1, centered, no overlap) ── */}
       <div
         ref={stageRef}
-        className="relative h-full w-full"
+        className="relative flex-1 overflow-hidden"
         onMouseMove={onStageMouseMove}
         onMouseLeave={onStageMouseLeave}
-        onClick={onStageClick}
+        onMouseDown={onStageMouseDown}
+        onMouseUp={onStageMouseUp}
         onTouchStart={onTouchStart}
         onTouchEnd={onTouchEnd}
         style={{
@@ -287,7 +328,7 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
         {/* Cursor affordance arrows */}
         {cursorZone === "left" && (
           <div
-            className="pointer-events-none fixed left-8 top-1/2 -translate-y-1/2 font-display text-5xl"
+            className="pointer-events-none absolute left-6 top-1/2 -translate-y-1/2 font-display text-4xl sm:text-5xl"
             style={{
               opacity: arrowOpacity,
               color: "var(--room-ink)",
@@ -299,7 +340,7 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
         )}
         {cursorZone === "right" && (
           <div
-            className="pointer-events-none fixed right-8 top-1/2 -translate-y-1/2 font-display text-5xl"
+            className="pointer-events-none absolute right-6 top-1/2 -translate-y-1/2 font-display text-4xl sm:text-5xl"
             style={{
               opacity: arrowOpacity,
               color: "var(--room-ink)",

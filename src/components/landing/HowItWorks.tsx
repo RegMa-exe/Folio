@@ -9,9 +9,9 @@ export function HowItWorks() {
         <span className="italic text-ink-soft">We give you the experience.</span>
       </h2>
 
-      <div className="mt-16 grid gap-12 md:grid-cols-2 md:gap-16">
+      <div className="mt-16 grid gap-12 md:grid-cols-2 md:gap-20">
         {/* Traditional PDF */}
-        <div className="relative">
+        <div className="relative md:border-r md:border-hairline md:pr-12">
           <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-ink-faint">
             Traditional PDF viewer
           </p>
@@ -31,7 +31,7 @@ export function HowItWorks() {
         </div>
 
         {/* Our reader */}
-        <div className="relative">
+        <div className="relative md:pl-12">
           <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-lamplight">
             The folio reader
           </p>

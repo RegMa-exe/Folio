@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Upload, FileText } from "lucide-react";
+import { cleanTitle } from "@/lib/title";
 
 type Props = {
   onFile: (file: File) => void;
@@ -19,6 +20,8 @@ export function UploadPanel({ onFile, status, progress, fileName, error }: Props
     if (file) onFile(file);
   };
 
+  const displayTitle = fileName ? cleanTitle(fileName) : null;
+
   return (
     <div className="w-full max-w-xl">
       <div
@@ -32,24 +35,12 @@ export function UploadPanel({ onFile, status, progress, fileName, error }: Props
           setDragging(false);
           handleFiles(event.dataTransfer.files);
         }}
-        className={`relative rounded-sm border border-dashed p-10 text-center transition-all sm:p-14 ${
-          dragging
-            ? "border-lamplight bg-lamplight/5"
-            : "border-hairline hover:border-lamplight/50 hover:bg-paper/50"
-        }`}
+        className="relative rounded-sm border-2 border-dashed p-10 text-center transition-all sm:p-14"
         style={{
-          background: dragging ? undefined : "var(--paper)",
+          borderColor: dragging ? "var(--lamplight)" : "var(--hairline)",
+          background: dragging ? "color-mix(in oklab, var(--lamplight) 5%, transparent)" : "var(--paper)",
         }}
       >
-        {/* Desk-like surface detail */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 rounded-sm"
-          style={{
-            boxShadow: "inset 0 1px 0 oklch(1 0 0 / 40%)",
-          }}
-        />
-
         <div className="relative">
           <p className="font-display text-3xl font-semibold italic text-ink sm:text-4xl">
             Bring your book.
@@ -83,11 +74,11 @@ export function UploadPanel({ onFile, status, progress, fileName, error }: Props
       </div>
 
       {/* Processing / loading state */}
-      {fileName && status !== "error" && status !== "idle" && (
+      {displayTitle && status !== "error" && status !== "idle" && (
         <div className="mt-6 border-t border-hairline pt-6">
           <div className="flex items-center gap-3">
             <FileText className="size-4 shrink-0 text-lamplight" />
-            <span className="truncate font-display text-lg italic text-ink">{fileName}</span>
+            <span className="line-clamp-2 font-display text-lg italic text-ink">{displayTitle}</span>
           </div>
           <div className="mt-4 h-px overflow-hidden bg-hairline">
             <div
