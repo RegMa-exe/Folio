@@ -21,6 +21,9 @@ type Props = {
 };
 
 const DRAG_THRESHOLD = 60;
+const ZOOM_MIN = 75;
+const ZOOM_MAX = 250;
+const ZOOM_DEFAULT = 100;
 
 export function Reader({ doc, title, storageKey, onExit }: Props) {
   const total = doc.numPages;
@@ -34,6 +37,9 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
   const [turn, setTurn] = useState<{ dir: "next" | "prev"; id: number } | null>(null);
   const [box, setBox] = useState({ width: 720, height: 900 });
   const [aspect, setAspect] = useState(0.72);
+  const [zoom, setZoom] = useState(ZOOM_DEFAULT);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const panStart = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
 
   // cursor zone state
   const [cursorZone, setCursorZone] = useState<"left" | "right" | null>(null);
@@ -149,8 +155,24 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
       if (target.closest("[data-reader-control]")) return;
       dragStart.current = { x: clientX, y: clientY };
       isDragging.current = false;
+      // When zoomed in, start a pan gesture
+      if (zoom > ZOOM_DEFAULT) {
+        panStart.current = { x: clientX, y: clientY, panX: pan.x, panY: pan.y };
+      }
     },
-    [],
+    [zoom, pan],
+  );
+
+  // ── Unified pointer move (for panning when zoomed) ──
+  const onPointerMove = useCallback(
+    (clientX: number, clientY: number) => {
+      if (!panStart.current || zoom <= ZOOM_DEFAULT) return;
+      const dx = clientX - panStart.current.x;
+      const dy = clientY - panStart.current.y;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) isDragging.current = true;
+      setPan({ x: panStart.current.panX + dx, y: panStart.current.panY + dy });
+    },
+    [zoom],
   );
 
   // ── Unified pointer end (mouse + touch) ──
@@ -158,15 +180,21 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
     (clientX: number, clientY: number) => {
       const start = dragStart.current;
       dragStart.current = null;
+      panStart.current = null;
 
       if (!start) return;
 
       const dx = clientX - start.x;
       const dy = clientY - start.y;
 
+      // If panning was active, don't trigger page navigation
+      if (zoom > ZOOM_DEFAULT && isDragging.current) {
+        revealControls();
+        return;
+      }
+
       // If it was a drag beyond threshold
       if (Math.abs(dx) > DRAG_THRESHOLD && Math.abs(dx) > Math.abs(dy) * 1.2) {
-        // Drag left → next, drag right → prev
         go(dx < 0 ? "next" : "prev");
         revealControls();
         return;
@@ -185,7 +213,7 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
         revealControls();
       }
     },
-    [go, nextPage, prevPage, revealControls],
+    [go, nextPage, prevPage, revealControls, zoom],
   );
 
   // ── Mouse handlers ──
@@ -194,6 +222,13 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
       onPointerDown(event.clientX, event.clientY, event.target as HTMLElement);
     },
     [onPointerDown],
+  );
+
+  const onStageMouseMovePan = useCallback(
+    (event: React.MouseEvent) => {
+      onPointerMove(event.clientX, event.clientY);
+    },
+    [onPointerMove],
   );
 
   const onStageMouseUp = useCallback(
@@ -230,6 +265,7 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
   const targetHeight = availableHeight * 0.96;
   const maxSheetWidth = Math.min(box.width * 0.92, targetHeight * aspect, 1100);
   const sheetWidth = Math.max(200, maxSheetWidth);
+  const zoomScale = zoom / 100;
 
   const arrowOpacity = Math.min(0.6, 0.12 + edgeIntensity * 0.48);
 
@@ -252,6 +288,12 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
         theme={theme}
         onPrev={() => { prevPage(); revealControls(); }}
         onNext={() => { nextPage(); revealControls(); }}
+        zoom={zoom}
+        onZoomChange={(z) => {
+          setZoom(z);
+          if (z === ZOOM_DEFAULT) setPan({ x: 0, y: 0 });
+          revealControls();
+        }}
         onToggleBookmark={toggleBookmark}
         onToggleSound={() => {
           setSoundOn((on) => {
@@ -273,15 +315,16 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
       <div
         ref={stageRef}
         className="relative flex-1 overflow-hidden"
-        onMouseMove={onStageMouseMove}
+        onMouseMove={(e) => { onStageMouseMove(e); onStageMouseMovePan(e); }}
         onMouseLeave={onStageMouseLeave}
         onMouseDown={onStageMouseDown}
         onMouseUp={onStageMouseUp}
         onTouchStart={onTouchStart}
+        onTouchMove={(e) => { const t = e.touches[0]; if (t) onPointerMove(t.clientX, t.clientY); }}
         onTouchEnd={onTouchEnd}
         style={{
           perspective: "2200px",
-          cursor: cursorZone === "left" ? "w-resize" : cursorZone === "right" ? "e-resize" : "default",
+          cursor: zoomScale > 1 ? "grab" : cursorZone === "left" ? "w-resize" : cursorZone === "right" ? "e-resize" : "default",
         }}
       >
         <div className="flex h-full w-full items-center justify-center">
@@ -303,6 +346,11 @@ export function Reader({ doc, title, storageKey, onExit }: Props) {
               className={`page-sheet relative rounded-[4px] p-2 sm:p-3 ${
                 turn ? (turn.dir === "next" ? "turning-next" : "turning-prev") : ""
               }`}
+              style={{
+                transform: `scale(${zoomScale}) translate(${pan.x}px, ${pan.y}px)`,
+                transformOrigin: "center center",
+                transition: turn ? undefined : "transform 80ms ease-out",
+              }}
             >
               <BookPage
                 doc={doc}

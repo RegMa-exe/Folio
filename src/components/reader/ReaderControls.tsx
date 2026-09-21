@@ -7,6 +7,9 @@ const THEMES: { id: ReadingTheme; label: string; swatch: string }[] = [
   { id: "dark", label: "Night", swatch: "#211C17" },
 ];
 
+const ZOOM_MIN = 75;
+const ZOOM_MAX = 250;
+
 type Props = {
   visible: boolean;
   title: string;
@@ -15,8 +18,10 @@ type Props = {
   bookmarked: boolean;
   soundOn: boolean;
   theme: ReadingTheme;
+  zoom: number;
   onPrev: () => void;
   onNext: () => void;
+  onZoomChange: (zoom: number) => void;
   onToggleBookmark: () => void;
   onToggleSound: () => void;
   onTheme: (theme: ReadingTheme) => void;
@@ -31,8 +36,10 @@ export function ReaderControls({
   bookmarked,
   soundOn,
   theme,
+  zoom,
   onPrev,
   onNext,
+  onZoomChange,
   onToggleBookmark,
   onToggleSound,
   onTheme,
@@ -53,7 +60,7 @@ export function ReaderControls({
         />
       </div>
 
-      {/* ── Top bar — dedicated layout row, not floating ── */}
+      {/* ── Top bar ── */}
       <div
         className={`relative z-30 flex shrink-0 items-center justify-between gap-4 px-4 py-3 sm:px-8 sm:py-4 ${shell}`}
       >
@@ -87,7 +94,7 @@ export function ReaderControls({
         </button>
       </div>
 
-      {/* ── Bottom bar — dedicated layout row, not floating over the page ── */}
+      {/* ── Bottom bar ── */}
       <div
         className={`relative z-30 flex shrink-0 flex-col items-center gap-3 px-4 pb-4 pt-2 sm:px-8 sm:pb-5 ${shell}`}
       >
@@ -116,6 +123,31 @@ export function ReaderControls({
         </div>
 
         <div className="flex flex-wrap items-center justify-center gap-4">
+          {/* Zoom slider */}
+          <div
+            data-reader-control
+            className="flex items-center gap-2"
+            role="group"
+            aria-label="Zoom"
+          >
+            <span className="font-mono text-[9px] uppercase tracking-[0.2em] opacity-50">Zoom</span>
+            <input
+              type="range"
+              min={ZOOM_MIN}
+              max={ZOOM_MAX}
+              value={zoom}
+              onChange={(e) => onZoomChange(Number(e.target.value))}
+              aria-label="Zoom level"
+              className="folio-zoom-slider w-20 sm:w-28"
+              style={{
+                accentColor: "var(--lamplight)",
+              }}
+            />
+            <span className="font-mono text-[10px] tabular-nums opacity-70 w-9 text-right">
+              {zoom}%
+            </span>
+          </div>
+
           <div className="flex items-center gap-2" role="group" aria-label="Reading theme">
             {THEMES.map((option) => (
               <button

@@ -234,3 +234,45 @@
     opacity: 0.5;
   }
 }
+
+/* ── Zoom slider ── */
+.folio-zoom-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 2px;
+  border-radius: 1px;
+  background: color-mix(in oklab, currentColor 20%, transparent);
+  outline: none;
+  cursor: pointer;
+}
+
+.folio-zoom-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--lamplight);
+  border: none;
+  cursor: pointer;
+  transition: transform 100ms ease;
+}
+
+.folio-zoom-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+.folio-zoom-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--lamplight);
+  border: none;
+  cursor: pointer;
+}
+
+.folio-zoom-slider::-moz-range-track {
+  height: 2px;
+  border-radius: 1px;
+  background: color-mix(in oklab, currentColor 20%, transparent);
+}
